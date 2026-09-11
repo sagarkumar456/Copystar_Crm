@@ -47,7 +47,6 @@ class _OrdersViewState extends State<OrdersView> {
     });
   }
 
-  // 🟢 NAYA: Manual Order Create karne ka Dialog Form
   void _showCreateManualOrderDialog(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -130,7 +129,6 @@ class _OrdersViewState extends State<OrdersView> {
                   int randomNum = 1000 + Random().nextInt(9000);
                   String manualOrderId = 'CS-2026-$randomNum';
 
-                  // Firebase me naya order push karna
                   await FirebaseDatabase.instance.ref().child('cod_orders').push().set({
                     'customer_name': nameController.text.trim(),
                     'phone': phoneController.text.trim(),
@@ -138,6 +136,7 @@ class _OrdersViewState extends State<OrdersView> {
                     'location': 'Manual Order',
                     'order_id': manualOrderId,
                     'status': 'Pending',
+                    'source': 'crm',
                     'total_amount': amountController.text.trim().isEmpty ? '0' : amountController.text.trim(),
                     'timestamp': DateTime.now().toIso8601String(),
                     'ordered_items': [
@@ -243,7 +242,6 @@ class _OrdersViewState extends State<OrdersView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- HEADER WITH MANUAL ORDER BUTTON & SEARCH ---
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -251,7 +249,6 @@ class _OrdersViewState extends State<OrdersView> {
               children: [
                 const Text('Customer COD Orders', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(width: 20),
-                // 🟢 MANUAL ORDER BUTTON
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF63D392),
@@ -266,7 +263,7 @@ class _OrdersViewState extends State<OrdersView> {
             ),
             
             SizedBox(
-              width: 280,
+              width: 320,
               child: TextField(
                 controller: _searchController,
                 style: const TextStyle(color: Colors.white),
@@ -276,7 +273,7 @@ class _OrdersViewState extends State<OrdersView> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: 'Search Order ID...',
+                  hintText: 'Search ID, Name or Phone...',
                   hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                   prefixIcon: const Icon(Icons.search, color: Colors.grey),
                   filled: true,
@@ -315,7 +312,8 @@ class _OrdersViewState extends State<OrdersView> {
                 ordersList = ordersList.where((order) {
                   String orderId = order['generated_order_id'].toString().toLowerCase();
                   String customerName = order['customer_name'].toString().toLowerCase();
-                  return orderId.contains(_searchQuery) || customerName.contains(_searchQuery);
+                  String phone = order['phone'].toString().toLowerCase();
+                  return orderId.contains(_searchQuery) || customerName.contains(_searchQuery) || phone.contains(_searchQuery);
                 }).toList();
               }
 
@@ -334,7 +332,12 @@ class _OrdersViewState extends State<OrdersView> {
                   String orderTime = _formatDate(order['timestamp']);
                   String currentStatus = order['status'] ?? 'Pending';
                   String products = _extractProductNames(order['ordered_items'], order['product_names']);
+                  String customerPhone = order['phone'] ?? 'No Phone';
                   
+                  bool isFromCrm = order['source'] == 'crm';
+                  String sourceText = isFromCrm ? 'CRM' : 'www.copystar.com.np';
+                  Color sourceColor = isFromCrm ? Colors.purpleAccent : Colors.tealAccent;
+
                   var rawAmount = order['total_amount'];
                   bool hasAmount = rawAmount != null && rawAmount.toString().isNotEmpty && rawAmount.toString() != "0";
                   String totalAmount = hasAmount ? rawAmount.toString() : "Not Set";
@@ -395,22 +398,57 @@ class _OrdersViewState extends State<OrdersView> {
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Text(uniqueOrderId, style: const TextStyle(color: Color(0xFF4A90E2), fontWeight: FontWeight.bold, fontSize: 13)),
+                                                  Text('Order ID: $uniqueOrderId', style: const TextStyle(color: Color(0xFF4A90E2), fontWeight: FontWeight.bold, fontSize: 13)),
                                                   const SizedBox(width: 6),
                                                   const Icon(Icons.copy, size: 14, color: Color(0xFF4A90E2)),
                                                 ],
                                               ),
                                             ),
                                           ),
+
+                                          const SizedBox(width: 10),
+
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: sourceColor.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: sourceColor, width: 1),
+                                            ),
+                                            child: Text(
+                                              sourceText, 
+                                              style: TextStyle(color: sourceColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 5),
+                                      const SizedBox(height: 6),
                                       Row(
                                         children: [
                                           const Icon(Icons.phone, size: 14, color: Colors.grey),
                                           const SizedBox(width: 5),
-                                          Text(order['phone'] ?? 'No Phone', style: const TextStyle(color: Colors.grey, fontSize: 14)),
-                                          const SizedBox(width: 15),
+                                          
+                                          InkWell(
+                                            onTap: () {
+                                              Clipboard.setData(ClipboardData(text: customerPhone));
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Phone Copied: $customerPhone'),
+                                                  duration: const Duration(seconds: 2),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            },
+                                            child: Row(
+                                              children: [
+                                                Text(customerPhone, style: const TextStyle(color: Colors.grey, fontSize: 14, decoration: TextDecoration.underline)),
+                                                const SizedBox(width: 5),
+                                                const Icon(Icons.copy, size: 12, color: Colors.grey),
+                                              ],
+                                            ),
+                                          ),
+                                          
+                                          const SizedBox(width: 20),
                                           const Icon(Icons.access_time, size: 14, color: Colors.grey),
                                           const SizedBox(width: 5),
                                           Text(orderTime, style: const TextStyle(color: Colors.grey, fontSize: 14)),
