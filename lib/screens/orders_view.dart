@@ -47,6 +47,12 @@ class _OrdersViewState extends State<OrdersView> {
     });
   }
 
+  void _updatePaymentStatus(String orderId, String paymentStatus) {
+    FirebaseDatabase.instance.ref().child('cod_orders').child(orderId).update({
+      'payment_status': paymentStatus,
+    });
+  }
+
   void _showCreateManualOrderDialog(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -137,6 +143,7 @@ class _OrdersViewState extends State<OrdersView> {
                     'order_id': manualOrderId,
                     'status': 'Pending',
                     'source': 'crm',
+                    // Default payment status hata diya, ab order card par select karna hoga
                     'total_amount': amountController.text.trim().isEmpty ? '0' : amountController.text.trim(),
                     'timestamp': DateTime.now().toIso8601String(),
                     'ordered_items': [
@@ -317,10 +324,6 @@ class _OrdersViewState extends State<OrdersView> {
                 }).toList();
               }
 
-              if (ordersList.isEmpty) {
-                return const Center(child: Text('No matching orders found.', style: TextStyle(color: Colors.grey, fontSize: 16)));
-              }
-
               ordersList.sort((a, b) => b['timestamp'].toString().compareTo(a['timestamp'].toString()));
 
               return ListView.builder(
@@ -341,6 +344,9 @@ class _OrdersViewState extends State<OrdersView> {
                   var rawAmount = order['total_amount'];
                   bool hasAmount = rawAmount != null && rawAmount.toString().isNotEmpty && rawAmount.toString() != "0";
                   String totalAmount = hasAmount ? rawAmount.toString() : "Not Set";
+
+                  // 🟢 Payment Status Check (Ab default null hoga ya jo select kiya hoga wahi aayega)
+                  String? paymentStatus = order['payment_status'];
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 25),
@@ -511,10 +517,12 @@ class _OrdersViewState extends State<OrdersView> {
                                       const Text('Ordered Items', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1)),
                                       const SizedBox(height: 10),
                                       Text(products, style: const TextStyle(color: Color(0xFF4A90E2), fontSize: 15, height: 1.5)),
+                                      
                                       const Padding(
                                         padding: EdgeInsets.symmetric(vertical: 12),
                                         child: Divider(color: Colors.white12, height: 1),
                                       ),
+                                      
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -541,6 +549,63 @@ class _OrdersViewState extends State<OrdersView> {
                                                   icon: const Icon(Icons.add, size: 16),
                                                   label: const Text('Add Amount', style: TextStyle(fontSize: 12)),
                                                 ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+
+                                      const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 12),
+                                        child: Divider(color: Colors.white12, height: 1),
+                                      ),
+
+                                      // 🟢 UPDATED: Payment Status Row - Dono buttons dikhenge jab tak select na ho
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text('Payment Status:', style: TextStyle(color: Colors.white70, fontSize: 15)),
+                                          Row(
+                                            children: [
+                                              if (paymentStatus == null && currentStatus != 'Cancelled') ...[
+                                                OutlinedButton.icon(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: Colors.orange,
+                                                    side: const BorderSide(color: Colors.orange),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                  ),
+                                                  onPressed: () => _updatePaymentStatus(orderKey, 'COD'),
+                                                  icon: const Icon(Icons.money, size: 16),
+                                                  label: const Text('Set COD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                OutlinedButton.icon(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: Colors.green,
+                                                    side: const BorderSide(color: Colors.green),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                                  ),
+                                                  onPressed: () => _updatePaymentStatus(orderKey, 'Paid'),
+                                                  icon: const Icon(Icons.check_circle, size: 16),
+                                                  label: const Text('Set PAID', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                ),
+                                              ] else if (paymentStatus != null) ...[
+                                                Text(
+                                                  paymentStatus == 'Paid' ? 'PAID' : 'COD',
+                                                  style: TextStyle(
+                                                    color: paymentStatus == 'Paid' ? Colors.green : Colors.orange,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    letterSpacing: 1,
+                                                  ),
+                                                ),
+                                              ] else ...[
+                                                const Text(
+                                                  'NOT SET',
+                                                  style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         ],
