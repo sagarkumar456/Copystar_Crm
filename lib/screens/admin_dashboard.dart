@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'orders_view.dart';    // <-- Yeh line zaroori hai
-import 'products_view.dart';  // <-- Yeh line zaroori hai
+import 'orders_view.dart';    
+import 'products_view.dart'; 
+import 'downloads_view.dart'; // 🟢 1. Naya file import kiya
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -30,6 +31,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(height: 20),
                 _buildMenuButton(0, Icons.shopping_cart, 'Live COD Orders'),
                 _buildMenuButton(1, Icons.inventory_2, 'Manage Products'),
+                _buildMenuButton(2, Icons.download, 'Software Downloads'), // 🟢 2. Naya button add kiya
               ],
             ),
           ),
@@ -37,9 +39,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Container(
               color: const Color(0xFF181818),
               padding: const EdgeInsets.all(30),
+              // 🟢 3. Teesri screen dikhane ka logic add kiya
               child: _selectedIndex == 0 
                   ? const OrdersView() 
-                  : const ProductsView(),
+                  : _selectedIndex == 1 
+                      ? const ProductsView()
+                      : const DownloadsView(),
             ),
           ),
         ],
